@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { Send, Mic, Volume2, StopCircle, Activity, HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
 import { CrisisOverlay } from './crisis-overlay';
 import { useTTS } from '@/lib/hooks/use-tts';
@@ -16,44 +15,13 @@ export function ChatInterface() {
     const [isCrisis, setIsCrisis] = useState(false);
     const [crisisResources, setCrisisResources] = useState<any[]>([]);
 
-    // Local Input State (Manual Override for Reliability)
+    // Chat State
+    const [messages, setMessages] = useState<any[]>([]);
     const [localInput, setLocalInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     // TTS Hook
     const { speak, stop: stopTTS, isPlaying: isTTSPlaying } = useTTS();
-
-    // Vercel AI SDK
-    const { messages, append, isLoading, error: chatError } = useChat({
-        api: '/api/chat',
-        body: {
-            biometricData: {
-                pitch_hz: pitch,
-                jitter_percent: stressScore * 20,
-                face_valence: 1 - stressScore * 2,
-                derived_stress_score: stressScore,
-                metadata: { sensor_confidence: 1.0 }
-            } as BiometricData
-        },
-        onError: (err: any) => {
-            console.error("Chat Error:", err);
-            alert(`Chat Error: ${err.message}`);
-            // In a real app, toast notification here
-        },
-        onResponse: async (response: any) => {
-            if (response.status === 400) {
-                const data = await response.json();
-                if (data.trigger === 'detected_crisis_keywords') {
-                    setIsCrisis(true);
-                    setCrisisResources(data.resources);
-                }
-            }
-        },
-        onFinish: (message: any) => {
-            if (message.role === 'assistant' && !isCrisis) {
-                speak(message.content);
-            }
-        }
-    } as any) as any;
 
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -72,10 +40,63 @@ export function ChatInterface() {
         setLocalInput(''); // Optimistic clear
         stopTTS();
 
-        await append({
-            role: 'user',
-            content: text,
-        });
+        // Add User Message
+        const userMsg = { id: Date.now(), role: 'user', content: text };
+        setMessages(prev => [...prev, userMsg]);
+        setIsLoading(true);
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [...messages, userMsg],
+                    biometricData: {
+                        pitch_hz: pitch,
+                        jitter_percent: stressScore * 20,
+                        face_valence: 1 - stressScore * 2,
+                        derived_stress_score: stressScore,
+                        metadata: { sensor_confidence: 1.0 }
+                    }
+                })
+            });
+
+            if (!response.ok) throw new Error(response.statusText);
+
+            // Create Assistant Message Placeholder
+            const assistantMsgId = Date.now() + 1;
+            setMessages(prev => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }]);
+
+            // Stream Reader
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            if (!reader) throw new Error('No reader available');
+
+            let assistantContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                assistantContent += chunk;
+
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantMsgId ? { ...m, content: assistantContent } : m
+                ));
+            }
+
+            // TTS on finish
+            if (!isCrisis) {
+                speak(assistantContent);
+            }
+
+        } catch (err: any) {
+            console.error("Chat Error:", err);
+            alert(`Chat Error: ${err.message}`);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -180,7 +201,7 @@ export function ChatInterface() {
                         ))}
                     </AnimatePresence>
 
-                    {isLoading && (
+                    {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -200,100 +221,44 @@ export function ChatInterface() {
                         <div className="absolute inset-0 bg-slate-100 rounded-2xl md:rounded-3xl border border-transparent group-focus-within:border-teal-500/30 group-focus-within:bg-white group-focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all duration-300" />
 
                         <input
-                            className="relative w-full bg-transparent p-4 md:p-5 pl-6 pr-32 text-slate-800 placeholder:text-slate-400 focus:outline-none font-medium"
                             value={localInput}
                             onChange={(e) => setLocalInput(e.target.value)}
                             placeholder="Type how you feel..."
+                            className="w-full bg-transparent border-none px-6 py-4 md:py-5 text-slate-700 placeholder:text-slate-400 focus:ring-0 relative z-10"
                             disabled={isLoading}
                         />
 
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <div className="absolute right-3 z-20 flex items-center gap-2">
                             <button
                                 type="button"
-                                className="p-2.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
-                                onClick={() => alert("Voice analysis requires microphone permission. Coming in Feature B.")}
+                                className="p-2 text-slate-400 hover:text-teal-600 transition-colors rounded-full hover:bg-slate-50"
+                                disabled={isLoading}
                             >
                                 <Mic className="w-5 h-5" />
                             </button>
                             <button
                                 type="submit"
-                                disabled={isLoading || !localInput.trim()}
-                                className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-slate-900/20 active:scale-95"
+                                disabled={!localInput.trim() || isLoading}
+                                className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-slate-900/20 active:scale-95"
                             >
-                                <Send className="w-5 h-5" />
+                                {isLoading ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <Send className="w-5 h-5" />
+                                )}
                             </button>
                         </div>
                     </form>
-
-                    <div className="text-center mt-3 flex justify-center items-center gap-2 opacity-60">
-                        <ShieldCheck className="w-3 h-3 text-slate-400" />
-                        <p className="text-[10px] text-slate-400 font-medium tracking-wide">
-                            AI Triage active. Emergencies: Dial 988.
+                    <div className="text-center mt-3">
+                        <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1.5">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>Private & Encrypted Session</span>
+                            <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                            <span>AI-Enhanced Support</span>
                         </p>
                     </div>
                 </div>
             </motion.div>
-
-            {/* Sidebar (Desktop Only) */}
-            <div className="hidden xl:flex w-80 p-8 flex-col h-full bg-white/50 backdrop-blur-md border-l border-white/20">
-                <div className="flex items-center gap-2 mb-8 text-slate-400">
-                    <Activity className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Biometric Context</span>
-                </div>
-
-                <div className="space-y-8">
-                    {/* Stress Slider */}
-                    <div className="space-y-3 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex justify-between items-center">
-                            <label className="text-sm font-semibold text-slate-700">Stress Detected</label>
-                            <span className={clsx("text-xs font-mono px-2 py-1 rounded-md", stressScore > 0.7 ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600")}>
-                                {(stressScore * 100).toFixed(0)}%
-                            </span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={stressScore}
-                            onChange={(e) => setStressScore(parseFloat(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-                        />
-                        <div className="flex justify-between text-[10px] uppercase font-bold text-slate-300">
-                            <span>Relaxed</span>
-                            <span>Acute</span>
-                        </div>
-                    </div>
-
-                    {/* Pitch Slider */}
-                    <div className="space-y-3 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                        <div className="flex justify-between items-center">
-                            <label className="text-sm font-semibold text-slate-700">Voice Pitch</label>
-                            <span className="text-xs font-mono px-2 py-1 bg-slate-100 rounded-md text-slate-600">{pitch} Hz</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="80"
-                            max="300"
-                            value={pitch}
-                            onChange={(e) => setPitch(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-                        />
-                    </div>
-
-                    {/* Info Card */}
-                    <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100/50">
-                        <h4 className="text-xs font-bold text-blue-900 uppercase mb-2">Simulated Logic</h4>
-                        <p className="text-xs text-blue-800/80 leading-relaxed font-medium">
-                            The AI adapts its tone based on these signals.
-                            <br /><br />
-                            <span className="block p-2 bg-white/60 rounded-lg border border-blue-100/20 text-blue-700">
-                                Try: "I feel hopeless"
-                            </span>
-                        </p>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

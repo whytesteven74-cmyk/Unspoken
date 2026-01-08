@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('test chat functionality', async ({ page }) => {
     // Go to the live URL (or localhost if testing locally, but user asked for live debugging)
     // We'll test the most recent deployment URL provided by the agent in context, or the main one.
-    const liveUrl = 'https://unspoken-oncs1nmlf-whytesteven74-1176s-projects.vercel.app';
+    const liveUrl = 'https://unspoken-h97la3r5k-whytesteven74-1176s-projects.vercel.app';
 
     await page.goto(liveUrl);
 
