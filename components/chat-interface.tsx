@@ -36,6 +36,7 @@ export function ChatInterface() {
         },
         onError: (err: any) => {
             console.error("Chat Error:", err);
+            alert(`Chat Error: ${err.message}`);
             // In a real app, toast notification here
         },
         onResponse: async (response: any) => {

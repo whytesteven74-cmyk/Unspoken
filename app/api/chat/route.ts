@@ -70,7 +70,7 @@ export async function POST(req: Request) {
         });
 
         console.log("[API] Stream created successfully");
-        return result.toDataStreamResponse();
+        return result.toUIMessageStreamResponse();
 
     } catch (error) {
         console.error("[API] Critical Error:", error);
