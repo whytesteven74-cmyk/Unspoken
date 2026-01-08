@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Unspoken
+
+Unspoken is a serverless mental health bridge application designed to triage users based on text, voice, and facial biomarkers. It provides immediate CBT support for non-emergencies and hard-routes crises to human professionals.
+
+## Features
+
+- **Multimodal Analysis:** Integrates text, voice (pitch/jitter), and facial expression analysis for a "Digital Psychological Signature".
+- **Safety First:** "Hard Guardrail" protocol ensures crisis intent is detected deterministically *before* LLM inference.
+- **Privacy Focused:** Client-side biometric processing; only derived scores are sent to the server.
+- **Explainable AI:** Uses the TIFU framework to provide transparent rationales for triage decisions.
+
+## Tech Stack
+
+- **Framework:** Next.js 14+ (App Router)
+- **Database:** Supabase (PostgreSQL + pgvector)
+- **AI Orchestration:** Vercel AI SDK
+- **LLM:** Hermes 3 Llama 3.1 8B (via Custom Endpoint)
+- **TTS:** UncloseAI Kokoro (via Custom Endpoint)
+- **Styling:** Tailwind CSS
 
 ## Getting Started
 
-First, run the development server:
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/whytesteven74-cmyk/Unspoken.git
+    cd Unspoken
+    ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3.  **Set up Environment Variables:**
+    Create a `.env.local` file in the root directory with the following keys:
+    ```bash
+    # AI Services
+    LLM_BASE_URL="https://hermes.ai.unturf.com/v1"
+    LLM_MODEL="adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic"
+    LLM_API_KEY="your-llm-api-key"
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+    TTS_BASE_URL="https://speech.ai.unturf.com/v1"
+    TTS_MODEL="tts-1-kokoro"
+    TTS_API_KEY="your-tts-api-key"
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+    # Supabase (Coming Soon)
+    NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
+    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+    ```
 
-## Learn More
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [Gemini.md](./Gemini.md) for detailed architectural and ethical guidelines.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The project is configured for deployment on Vercel. Push to the `main` branch to trigger a deployment.

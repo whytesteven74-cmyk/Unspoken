@@ -9,6 +9,8 @@ You are the lead architect for **"Unspoken,"** a serverless mental health bridge
 *   **Auth:** Supabase Auth (configured for high-privacy/anonymity).
 *   **Compute:** Vercel Edge Functions (Serverless).
 *   **AI Orchestration:** Vercel AI SDK (Use `streamText` and `generateObject`).
+*   **LLM Provider:** Hermes 3 Llama 3.1 8B (Custom Endpoint: `https://hermes.ai.unturf.com/v1/`).
+*   **TTS Provider:** UncloseAI (Custom Endpoint: `https://speech.ai.unturf.com/v1/`).
 *   **Styling:** Tailwind CSS (Focus on accessibility/WCAG 2.1 AA).
 
 ## 2. Core Ethical & Safety Directives (NON-NEGOTIABLE)
