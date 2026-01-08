@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { Send, Mic, Volume2, StopCircle, Activity, HeartPulse, Frown, Smile } from 'lucide-react';
 import { CrisisOverlay } from './crisis-overlay';
 import { useTTS } from '@/lib/hooks/use-tts';
