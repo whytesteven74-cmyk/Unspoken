@@ -55,5 +55,5 @@ export async function POST(req: Request) {
         messages: messages.map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
 }
