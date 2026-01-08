@@ -64,13 +64,13 @@ export async function POST(req: Request) {
 
         // 3. Stream Response
         const result = await streamText({
-            model: customOpenAI(LLM_MODEL),
+            model: customOpenAI(LLM_MODEL) as any,
             system: systemPrompt,
             messages: messages.map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
         });
 
         console.log("[API] Stream created successfully");
-        return (result as any).toDataStreamResponse ? (result as any).toDataStreamResponse() : (result as any).toUIMessageStreamResponse();
+        return result.toDataStreamResponse();
 
     } catch (error) {
         console.error("[API] Critical Error:", error);
