@@ -9,11 +9,6 @@ const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://hermes.ai.unturf.com/v
 const LLM_MODEL = process.env.LLM_MODEL || 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic';
 const LLM_API_KEY = process.env.LLM_API_KEY || 'sk-placeholder';
 
-const customOpenAI = createOpenAI({
-    baseURL: LLM_BASE_URL,
-    apiKey: LLM_API_KEY,
-});
-
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
@@ -59,18 +54,70 @@ export async function POST(req: Request) {
         - Keep responses concise (under 3 sentences unless asked for more).
         `;
 
-        console.log("[API] Starting AI Stream with model:", LLM_MODEL);
-        console.log("[API] Base URL:", LLM_BASE_URL);
+        // 3. Prepare Messages for LLM
+        const openAIMessages = [
+            { role: 'system', content: systemPrompt },
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+        ];
 
-        // 3. Stream Response
-        const result = await streamText({
-            model: customOpenAI(LLM_MODEL) as any,
-            system: systemPrompt,
-            messages: messages.map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
+        console.log("[API] Sending Proxy Request to LLM:", LLM_BASE_URL);
+        console.log("[API] Model:", LLM_MODEL);
+
+        // 4. Direct Fetch Proxy
+        const upstreamResponse = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${LLM_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: LLM_MODEL,
+                messages: openAIMessages,
+                stream: true, // Enable Streaming
+                max_tokens: 500,
+            })
         });
 
-        console.log("[API] Stream created successfully");
-        return result.toTextStreamResponse();
+        if (!upstreamResponse.ok) {
+            const errorText = await upstreamResponse.text();
+            console.error("[API] Upstream Error:", upstreamResponse.status, errorText);
+            return new Response(errorText, { status: upstreamResponse.status });
+        }
+
+        // 5. Stream Handling (Transformation to Text)
+        // OpenAI streams return "data: { ...JSON... }" chunks.
+        // We need to parse these and yield just the content text to the client
+        // because our Client expects raw text (impl in chat-interface.tsx).
+
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+
+        const transformStream = new TransformStream({
+            async transform(chunk, controller) {
+                const text = decoder.decode(chunk);
+                const lines = text.split('\n');
+
+                for (const line of lines) {
+                    if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const jsonStr = line.replace('data: ', '');
+                            const json = JSON.parse(jsonStr);
+                            const content = json.choices?.[0]?.delta?.content;
+                            if (content) {
+                                controller.enqueue(encoder.encode(content));
+                            }
+                        } catch (e) {
+                            console.error("[API] Parse Error on chunk:", line);
+                        }
+                    }
+                }
+            }
+        });
+
+        return new Response(upstreamResponse.body?.pipeThrough(transformStream), {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
 
     } catch (error) {
         console.error("[API] Critical Error:", error);
