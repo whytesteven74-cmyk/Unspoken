@@ -1,14 +1,15 @@
-// import { guardrailCheck } from '@/lib/guardrail';
-// import { BiometricData } from '@/lib/types';
-// import { prisma } from '@/lib/prisma';
-// import { isRateLimited } from '@/lib/rate-limit';
+import { isRateLimited } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-    return Response.json({ message: "POST worked with commented imports" });
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    if (isRateLimited(ip)) {
+        return Response.json({ error: "Too Many Requests" }, { status: 429 });
+    }
+    return Response.json({ message: "POST worked with isRateLimited", ip });
 }
 
 export async function GET() {
-    return Response.json({ message: "GET worked with commented imports" });
+    return Response.json({ message: "GET worked with isRateLimited" });
 }
