@@ -9,6 +9,9 @@ const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://hermes.ai.unturf.com/v
 const LLM_MODEL = process.env.LLM_MODEL || 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic';
 const LLM_API_KEY = process.env.LLM_API_KEY || 'sk-placeholder';
 
+console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
+
+
 export const runtime = 'nodejs';
 
 // HACK: Bypass SSL errors for upstream LLM in local dev/demo environment
@@ -259,6 +262,6 @@ export async function POST(req: Request) {
         console.error("[API] Critical Error:", error);
         logDebug(`CRITICAL ERROR: ${String(error)}`);
         if (error instanceof Error) logDebug(error.stack || '');
-        return Response.json({ error: "Internal Server Error", details: String(error) }, { status: 500 });
+        return Response.json({ error: "Internal Server Error", details: String(error), db_url: process.env.DATABASE_URL }, { status: 500 });
     }
 }
