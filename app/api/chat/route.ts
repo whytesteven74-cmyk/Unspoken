@@ -10,11 +10,6 @@ const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://hermes.ai.unturf.com/v
 const LLM_MODEL = process.env.LLM_MODEL || 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic';
 const LLM_API_KEY = process.env.LLM_API_KEY || 'sk-placeholder';
 
-// HACK: Bypass SSL errors for upstream LLM in local dev/demo environment
-if (process.env.NODE_ENV === 'development') {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-
 export async function GET() {
     return Response.json({ status: "alive", method: "GET" });
 }
