@@ -2,16 +2,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Volume2, StopCircle, Activity, HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
+import { useAnalytics } from '@/lib/analytics';
 import { CrisisOverlay } from './crisis-overlay';
+import { useSTT } from '@/lib/hooks/use-stt';
 import { useTTS } from '@/lib/hooks/use-tts';
 import { BiometricData } from '@/lib/types';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function ChatInterface() {
+    const { track } = useAnalytics();
+
     // Biometric State (Simulation)
     const [stressScore, setStressScore] = useState(0.5);
-    const [pitch, setPitch] = useState(120);
     const [isCrisis, setIsCrisis] = useState(false);
     const [crisisResources, setCrisisResources] = useState<any[]>([]);
 
@@ -20,8 +23,18 @@ export function ChatInterface() {
     const [localInput, setLocalInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Biometric State (Detail)
+    const [pitch, setPitch] = useState(220);
+    const [jitter, setJitter] = useState(5);
+    const [showDebug, setShowDebug] = useState(false);
+
     // TTS Hook
-    const { speak, stop: stopTTS, isPlaying: isTTSPlaying } = useTTS();
+    const { speak, queue, stop: stopTTS, isPlaying: isTTSPlaying } = useTTS();
+
+    // STT Hook
+    const { isListening, isSupported, startListening } = useSTT({
+        onResult: (text) => setLocalInput(prev => `${prev} ${text}`.trim())
+    });
 
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +44,25 @@ export function ChatInterface() {
             bottomRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
+
+    // Crisis Trigger
+    useEffect(() => {
+        if (stressScore > 0.9 && !isCrisis) {
+            setIsCrisis(true);
+            track('crisis_triggered', { stressScore });
+        }
+    }, [stressScore, isCrisis, track]);
+
+
+    // Restore Session History
+    useEffect(() => {
+        fetch('/api/chat/history')
+            .then(res => res.json())
+            .then(data => {
+                if (data.messages) setMessages(data.messages);
+            })
+            .catch(err => console.error("Failed to load history:", err));
+    }, []);
 
     const handleSend = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -44,6 +76,8 @@ export function ChatInterface() {
         const userMsg = { id: Date.now(), role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
+
+        track('chat_sent', { length: text.length, stressScore });
 
         try {
             const response = await fetch('/api/chat', {
@@ -81,16 +115,17 @@ export function ChatInterface() {
                 const chunk = decoder.decode(value, { stream: true });
                 assistantContent += chunk;
 
+                // Queue chunk for TTS immediately
+                if (!isCrisis) {
+                    queue(chunk);
+                }
+
                 setMessages(prev => prev.map(m =>
                     m.id === assistantMsgId ? { ...m, content: assistantContent } : m
                 ));
             }
 
-            // TTS on finish
-            if (!isCrisis) {
-                speak(assistantContent);
-            }
-
+            // (Removed post-loop TTS call)
         } catch (err: any) {
             console.error("Chat Error:", err);
             alert(`Chat Error: ${err.message}`);
@@ -99,18 +134,126 @@ export function ChatInterface() {
         }
     };
 
+
     return (
-        <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800 font-sans overflow-hidden">
+        <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800 font-sans overflow-hidden relative">
             <CrisisOverlay
                 isOpen={isCrisis}
                 onClose={() => setIsCrisis(false)}
                 resources={crisisResources.length > 0 ? crisisResources : undefined}
             />
 
+            {/* Biometric Debug Panel */}
+            <AnimatePresence>
+                {showDebug && (
+                    <motion.div
+                        initial={{ x: -300, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -300, opacity: 0 }}
+                        className="absolute left-0 top-0 bottom-0 w-80 bg-white/90 backdrop-blur-md shadow-2xl z-20 border-r border-slate-200 p-6 overflow-y-auto"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-semibold text-slate-800 mb-0 flex items-center gap-2">
+                                <Activity className="w-5 h-5 text-teal-600" />
+                                Biometric Controls
+                            </h3>
+                            <button onClick={() => setShowDebug(false)} className="text-slate-400 hover:text-slate-600">
+                                <StopCircle className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                    <span>Stress Level</span>
+                                    <span className={stressScore > 0.7 ? "text-red-500" : "text-emerald-500"}>{stressScore.toFixed(2)}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={stressScore}
+                                    onChange={(e) => setStressScore(parseFloat(e.target.value))}
+                                    className="w-full accent-teal-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <p className="text-[10px] text-slate-400">Higher scores trigger empathy & grounding protocols.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                    <span>Voice Pitch (Hz)</span>
+                                    <span>{pitch} Hz</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="80"
+                                    max="300"
+                                    step="10"
+                                    value={pitch}
+                                    onChange={(e) => setPitch(parseInt(e.target.value))}
+                                    className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                    <span>Voice Jitter (%)</span>
+                                    <span>{jitter.toFixed(1)}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="50"
+                                    step="0.5"
+                                    value={jitter}
+                                    onChange={(e) => setJitter(parseFloat(e.target.value))}
+                                    className="w-full accent-purple-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-200">
+                                <button
+                                    onClick={() => setIsCrisis(!isCrisis)}
+                                    className={clsx(
+                                        "w-full py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all font-medium text-sm",
+                                        isCrisis
+                                            ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                                            : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100"
+                                    )}
+                                >
+                                    <ShieldCheck className="w-4 h-4" />
+                                    {isCrisis ? "Deactivate Crisis Mode" : "Force Crisis Mode"}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Toggle Button for Debug Panel */}
+            {!showDebug && (
+                <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={() => setShowDebug(true)}
+                    className="absolute left-6 bottom-6 z-10 p-3 bg-white/80 backdrop-blur shadow-lg border border-white/50 rounded-full text-slate-400 hover:text-teal-600 hover:scale-110 transition-all"
+                >
+                    <Activity className="w-6 h-6" />
+                </motion.button>
+            )}
+
             {/* Main Chat Area */}
             <motion.div
+                layout
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                animate={{
+                    opacity: 1,
+                    y: 0,
+                    x: showDebug ? 160 : 0, // Push content slightly when debug is open
+                    scale: showDebug ? 0.95 : 1
+                }}
+                transition={{ type: "spring", stiffness: 200, damping: 25 }}
                 className="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-white/80 backdrop-blur-xl shadow-2xl h-full md:h-[95vh] md:mt-[2.5vh] md:rounded-3xl border border-white/50 overflow-hidden relative"
             >
                 {/* Decorative Background Elements */}
@@ -231,10 +374,17 @@ export function ChatInterface() {
                         <div className="absolute right-3 z-20 flex items-center gap-2">
                             <button
                                 type="button"
-                                className="p-2 text-slate-400 hover:text-teal-600 transition-colors rounded-full hover:bg-slate-50"
-                                disabled={isLoading}
+                                onClick={isListening ? () => { } : startListening}
+                                className={clsx(
+                                    "p-2 transition-colors rounded-full",
+                                    isListening
+                                        ? "bg-red-50 text-red-600 animate-pulse border border-red-200"
+                                        : "text-slate-400 hover:text-teal-600 hover:bg-slate-50"
+                                )}
+                                disabled={isLoading || !isSupported}
+                                title={!isSupported ? "Voice input not supported in this browser" : "Speak"}
                             >
-                                <Mic className="w-5 h-5" />
+                                {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                             </button>
                             <button
                                 type="submit"

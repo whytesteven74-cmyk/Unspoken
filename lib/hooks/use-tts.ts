@@ -1,16 +1,23 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface UseTTSReturn {
     speak: (text: string) => Promise<void>;
     stop: () => void;
+    queue: (text: string) => void;
     isPlaying: boolean;
+    isProcessing: boolean;
     error: string | null;
 }
 
 export function useTTS(): UseTTSReturn {
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Audio Queue System
+    const audioQueue = useRef<string[]>([]);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const processingRef = useRef(false);
 
     const stop = useCallback(() => {
         if (audioRef.current) {
@@ -18,53 +25,78 @@ export function useTTS(): UseTTSReturn {
             audioRef.current.currentTime = 0;
             setIsPlaying(false);
         }
+        audioQueue.current = []; // Clear queue
+        processingRef.current = false;
+        setIsProcessing(false);
     }, []);
 
-    const speak = useCallback(async (text: string) => {
-        stop();
-        setError(null);
-        setIsPlaying(true);
+    const processQueue = useCallback(async () => {
+        if (processingRef.current || audioQueue.current.length === 0) return;
+
+        processingRef.current = true;
+        setIsProcessing(true);
+
+        const text = audioQueue.current.shift()!;
 
         try {
+            // Fetch Audio
             const response = await fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ input: text }),
             });
 
-            if (!response.ok) {
-                throw new Error(`TTS request failed: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`TTS Error: ${response.statusText}`);
 
             const audioBlob = await response.blob();
             const audioUrl = URL.createObjectURL(audioBlob);
 
-            if (audioRef.current) {
-                audioRef.current.pause();
-            }
-
             const audio = new Audio(audioUrl);
             audioRef.current = audio;
+            setIsPlaying(true);
 
-            audio.onended = () => {
-                setIsPlaying(false);
-                URL.revokeObjectURL(audioUrl);
-            };
-
-            audio.onerror = (e) => {
-                console.error("Audio playback error", e);
-                setError("Failed to play audio");
-                setIsPlaying(false);
-            };
-
-            await audio.play();
+            await new Promise<void>((resolve, reject) => {
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    setIsPlaying(false);
+                    resolve();
+                };
+                audio.onerror = (e) => {
+                    console.error("Audio playback error", e);
+                    reject(e);
+                };
+                audio.play().catch(reject);
+            });
 
         } catch (err) {
-            console.error('TTS Hook Error:', err);
+            console.error('TTS Processing Error:', err);
             setError(err instanceof Error ? err.message : 'Unknown TTS error');
-            setIsPlaying(false);
+        } finally {
+            processingRef.current = false;
+            setIsProcessing(false);
+            // Process next item recursively
+            if (audioQueue.current.length > 0) {
+                processQueue();
+            }
         }
+    }, []);
+
+    const queue = useCallback((text: string) => {
+        if (!text.trim()) return;
+        audioQueue.current.push(text);
+        processQueue();
+    }, [processQueue]);
+
+    // Legacy speak method (clears queue and speaks immediately)
+    const speak = useCallback(async (text: string) => {
+        stop();
+        queue(text);
+    }, [stop, queue]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => stop();
     }, [stop]);
 
-    return { speak, stop, isPlaying, error };
+    return { speak, stop, queue, isPlaying, isProcessing, error };
 }

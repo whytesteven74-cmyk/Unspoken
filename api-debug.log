@@ -1,0 +1,30 @@
+[2026-01-13T03:22:21.443Z] POST /api/chat received. MOCK_LLM=true 
+[2026-01-13T03:23:34.846Z] POST /api/chat received. MOCK_LLM=true 
+[2026-01-13T03:24:57.243Z] POST /api/chat received. MOCK_LLM=true 
+[2026-01-13T03:24:57.635Z] CRITICAL ERROR: TypeError: fetch failed
+[2026-01-13T03:24:57.636Z] TypeError: fetch failed
+    at node:internal/deps/undici/undici:15845:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async POST (C:\Users\User\OneDrive\Documents\Unspoken\.next\dev\server\chunks\[root-of-the-server]__93b86857._.js:307:34)
+    at async AppRouteRouteModule.do (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (C:\Users\User\OneDrive\Documents\Unspoken\.next\dev\server\chunks\[root-of-the-server]__c985d4fb._.js:12018:38)
+    at async AppRouteRouteModule.handleResponse (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (C:\Users\User\OneDrive\Documents\Unspoken\.next\dev\server\chunks\[root-of-the-server]__c985d4fb._.js:12081:32)
+    at async Module.handler (C:\Users\User\OneDrive\Documents\Unspoken\.next\dev\server\chunks\[root-of-the-server]__c985d4fb._.js:12134:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\base-server.js:1422:9)
+    at async DevServer.renderPageComponent (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\base-server.js:1524:32)
+    at async DevServer.pipeImpl (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\next-server.js:395:17)
+    at async DevServer.handleRequestImpl (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\base-server.js:909:17)
+    at async C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\dev\next-dev-server.js:387:20
+    at async Span.traceAsyncFn (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\dev\next-dev-server.js:383:24)
+    at async invokeRender (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\lib\router-server.js:248:21)
+    at async handleRequest (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\lib\router-server.js:447:24)
+    at async requestHandlerImpl (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\lib\router-server.js:496:13)
+    at async Server.requestListener (C:\Users\User\OneDrive\Documents\Unspoken\node_modules\next\dist\server\lib\start-server.js:226:13)
+[2026-01-13T03:25:44.634Z] POST /api/chat received. MOCK_LLM=true 
+[2026-01-13T03:26:17.581Z] POST /api/chat received. MOCK_LLM=true 
+[2026-01-13T03:29:33.817Z] POST /api/chat received. MOCK_LLM=true 

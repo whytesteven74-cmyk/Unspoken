@@ -13,14 +13,23 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: lts/*
+    
     - name: Install dependencies
       run: npm ci
+
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
+
     - name: Run Playwright tests
       run: npx playwright test
+      env:
+        # User defined secrets for CI should be set in repo settings
+        LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+        LLM_MODEL: ${{ secrets.LLM_MODEL }}
+
     - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
+      if: always()
       with:
         name: playwright-report
         path: playwright-report/

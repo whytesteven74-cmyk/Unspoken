@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id                    String   @id @default(uuid())
+  is_anonymous          Boolean  @default(false)
+  consented_to_biometrics Boolean @default(false)
+  baseline_stress_score Float?
+  
+  triage_events         TriageEvent[]
+  entries               Entry[]
+  messages              Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  created_at DateTime @default(now())
+}
+
+model TriageEvent {
+  id                 String   @id @default(uuid())
+  user_id            String
+  user               Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at         DateTime @default(now())
+  text_sentiment     Float?
+  voice_jitter       Float?
+  face_valence       Float?
+  risk_level         String?  // 'low', 'moderate', 'crisis'
+  ai_rationale       String?
+  triggered_guardrail Boolean @default(false)
+}
+
+model Entry {
+  id                String  @id @default(uuid())
+  user_id           String
+  user              Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  content_encrypted String?
+  ai_summary        String?
+}

@@ -1,4 +1,5 @@
 import { ChatInterface } from '@/components/chat-interface';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 export const metadata = {
   title: 'Unspoken | AI CBT Companion',
@@ -8,7 +9,9 @@ export const metadata = {
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-100">
-      <ChatInterface />
+      <ErrorBoundary>
+        <ChatInterface />
+      </ErrorBoundary>
     </main>
   );
 }
