@@ -196,9 +196,12 @@ export async function POST(req: Request) {
             }
         });
 
+        return Response.json({ debug: "made it to the end", status: upstreamResponse.status });
+        /*
         return new Response(upstreamResponse.body?.pipeThrough(transformStream), {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
+        */
 
     } catch (error) {
         console.error("[API] Critical Error:", error);
