@@ -1,4 +1,5 @@
 import { isRateLimited } from '@/lib/rate-limit';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -7,9 +8,18 @@ export async function POST(req: Request) {
     if (isRateLimited(ip)) {
         return Response.json({ error: "Too Many Requests" }, { status: 429 });
     }
-    return Response.json({ message: "POST worked with isRateLimited", ip });
+
+    let dbStatus = "not attempted";
+    try {
+        await prisma.profile.count();
+        dbStatus = "success";
+    } catch (e) {
+        dbStatus = "failed: " + String(e);
+    }
+
+    return Response.json({ message: "POST worked with prisma", dbStatus, ip });
 }
 
 export async function GET() {
-    return Response.json({ message: "GET worked with isRateLimited" });
+    return Response.json({ message: "GET worked with prisma" });
 }
