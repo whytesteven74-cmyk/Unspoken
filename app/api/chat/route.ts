@@ -9,9 +9,6 @@ const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://hermes.ai.unturf.com/v
 const LLM_MODEL = process.env.LLM_MODEL || 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic';
 const LLM_API_KEY = process.env.LLM_API_KEY || 'sk-placeholder';
 
-console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
-
-
 export const runtime = 'nodejs';
 
 // HACK: Bypass SSL errors for upstream LLM in local dev/demo environment
@@ -45,37 +42,53 @@ export async function POST(req: Request) {
         const { messages, biometricData } = body;
 
         // --- DATABASE INTEGRATION START ---
-        // 1. Get or Create User (Session Memory)
-        let user = await prisma.profile.findFirst({ where: { is_anonymous: true } });
-        if (!user) {
-            user = await prisma.profile.create({ data: { is_anonymous: true, consented_to_biometrics: true } });
+        // 1. Get or Create User (Session Memory) - OPTIONAL for MVP stability
+        let user = null;
+        try {
+            user = await prisma.profile.findFirst({ where: { is_anonymous: true } });
+            if (!user) {
+                user = await prisma.profile.create({ data: { is_anonymous: true, consented_to_biometrics: true } });
+            }
+            savedUserId = user.id;
+        } catch (dbError) {
+            console.warn("[API] DB Connection Warning (Profile):", dbError);
+            // Proceed without saving to DB
         }
-        savedUserId = user.id;
 
         const bioData = biometricData as BiometricData;
         const stressLevel = bioData?.derived_stress_score || 0;
 
-        // 2. Log Triage Event (Biometrics)
-        await prisma.triageEvent.create({
-            data: {
-                user_id: user.id,
-                voice_jitter: bioData.jitter_percent || 0,
-                face_valence: bioData.face_valence || 0,
-                risk_level: stressLevel > 0.8 ? 'crisis' : stressLevel > 0.5 ? 'moderate' : 'low',
-                created_at: new Date()
+        // 2. Log Triage Event (Biometrics) - OPTIONAL
+        if (savedUserId) {
+            try {
+                await prisma.triageEvent.create({
+                    data: {
+                        user_id: savedUserId,
+                        voice_jitter: bioData.jitter_percent || 0,
+                        face_valence: bioData.face_valence || 0,
+                        risk_level: stressLevel > 0.8 ? 'crisis' : stressLevel > 0.5 ? 'moderate' : 'low',
+                        created_at: new Date()
+                    }
+                });
+            } catch (e) {
+                console.warn("[API] DB Warning (Triage):", e);
             }
-        });
+        }
 
-        // 3. Save USER Message
+        // 3. Save USER Message - OPTIONAL
         const lastUserMessage = messages[messages.length - 1];
-        if (lastUserMessage?.role === 'user') {
-            await prisma.message.create({
-                data: {
-                    user_id: user.id,
-                    role: 'user',
-                    content: lastUserMessage.content
-                }
-            });
+        if (savedUserId && lastUserMessage?.role === 'user') {
+            try {
+                await prisma.message.create({
+                    data: {
+                        user_id: savedUserId,
+                        role: 'user',
+                        content: lastUserMessage.content
+                    }
+                });
+            } catch (e) {
+                console.warn("[API] DB Warning (User Msg):", e);
+            }
         }
         // --- DATABASE INTEGRATION END ---
 
@@ -236,7 +249,7 @@ export async function POST(req: Request) {
                     }
                 }
 
-                // Save Real LLM Response to DB
+                // Save Real LLM Response to DB - OPTIONAL
                 if (savedUserId && responseTextAccumulator.trim()) {
                     try {
                         console.log("[DB] Saving AI Response...");
@@ -248,7 +261,7 @@ export async function POST(req: Request) {
                             }
                         });
                     } catch (err) {
-                        console.error("[DB] Failed to save AI response:", err);
+                        console.error("[DB] Failed to save AI response (ignoring):", err);
                     }
                 }
             }
@@ -262,6 +275,6 @@ export async function POST(req: Request) {
         console.error("[API] Critical Error:", error);
         logDebug(`CRITICAL ERROR: ${String(error)}`);
         if (error instanceof Error) logDebug(error.stack || '');
-        return Response.json({ error: "Internal Server Error", details: String(error), db_url: process.env.DATABASE_URL }, { status: 500 });
+        return Response.json({ error: "Internal Server Error", details: String(error) }, { status: 500 });
     }
 }
