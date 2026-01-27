@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface UseTTSReturn {
-    speak: (text: string) => Promise<void>;
+    speak: (text: string, voiceId?: string) => Promise<void>;
     stop: () => void;
-    queue: (text: string) => void;
+    queue: (text: string, voiceId?: string) => void;
     isPlaying: boolean;
     isProcessing: boolean;
     error: string | null;
@@ -15,7 +15,7 @@ export function useTTS(): UseTTSReturn {
     const [error, setError] = useState<string | null>(null);
 
     // Audio Queue System
-    const audioQueue = useRef<string[]>([]);
+    const audioQueue = useRef<{ text: string; voice?: string }[]>([]);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const processingRef = useRef(false);
 
@@ -36,14 +36,15 @@ export function useTTS(): UseTTSReturn {
         processingRef.current = true;
         setIsProcessing(true);
 
-        const text = audioQueue.current.shift()!;
+        const item = audioQueue.current.shift()!;
+        const { text, voice } = item;
 
         try {
             // Fetch Audio
             const response = await fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input: text }),
+                body: JSON.stringify({ input: text, voice }),
             });
 
             if (!response.ok) throw new Error(`TTS Error: ${response.statusText}`);
@@ -81,16 +82,16 @@ export function useTTS(): UseTTSReturn {
         }
     }, []);
 
-    const queue = useCallback((text: string) => {
+    const queue = useCallback((text: string, voiceId?: string) => {
         if (!text.trim()) return;
-        audioQueue.current.push(text);
+        audioQueue.current.push({ text, voice: voiceId });
         processQueue();
     }, [processQueue]);
 
     // Legacy speak method (clears queue and speaks immediately)
-    const speak = useCallback(async (text: string) => {
+    const speak = useCallback(async (text: string, voiceId?: string) => {
         stop();
-        queue(text);
+        queue(text, voiceId);
     }, [stop, queue]);
 
     // Cleanup on unmount
@@ -99,4 +100,13 @@ export function useTTS(): UseTTSReturn {
     }, [stop]);
 
     return { speak, stop, queue, isPlaying, isProcessing, error };
+}
+
+export function getOptimalVoice(stressScore: number): string {
+    // High stress -> Calmer, deeper voices (Onyx/Shimmer)
+    if (stressScore > 0.7) return 'onyx';
+    // Medium stress -> Neutral (Echo)
+    if (stressScore > 0.4) return 'echo';
+    // Low stress -> Brighter (Alloy)
+    return 'alloy';
 }

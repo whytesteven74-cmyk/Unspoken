@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Volume2, StopCircle, Activity, HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
+import { Send, Mic, Volume2, StopCircle, Activity, HeartPulse, ShieldCheck, Sparkles, Twitter, Github } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
+import { VoiceControls } from '@/components/voice-controls';
+import { ModeToggle } from '@/components/mode-toggle';
 import { useAnalytics } from '@/lib/analytics';
 import { CrisisOverlay } from './crisis-overlay';
 import { useSTT } from '@/lib/hooks/use-stt';
-import { useTTS } from '@/lib/hooks/use-tts';
+import { useTTS, getOptimalVoice } from '@/lib/hooks/use-tts';
 import { BiometricData } from '@/lib/types';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +20,15 @@ export function ChatInterface() {
     const [stressScore, setStressScore] = useState(0.5);
     const [isCrisis, setIsCrisis] = useState(false);
     const [crisisResources, setCrisisResources] = useState<any[]>([]);
+
+    // Voice State
+    const [selectedVoice, setSelectedVoice] = useState('auto');
+    const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+
+    // Helper to determine voice
+    const getCurrentVoice = (score: number) => {
+        return selectedVoice === 'auto' ? getOptimalVoice(score) : selectedVoice;
+    };
 
     // Chat State
     const [messages, setMessages] = useState<any[]>([]);
@@ -116,8 +128,8 @@ export function ChatInterface() {
                 assistantContent += chunk;
 
                 // Queue chunk for TTS immediately
-                if (!isCrisis) {
-                    queue(chunk);
+                if (!isCrisis && isTTSEnabled) {
+                    queue(chunk, getCurrentVoice(stressScore));
                 }
 
                 setMessages(prev => prev.map(m =>
@@ -136,7 +148,7 @@ export function ChatInterface() {
 
 
     return (
-        <div className="flex h-screen bg-transparent text-slate-100 font-sans overflow-hidden relative">
+        <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden relative">
             <CrisisOverlay
                 isOpen={isCrisis}
                 onClose={() => setIsCrisis(false)}
@@ -254,28 +266,27 @@ export function ChatInterface() {
                     scale: showDebug ? 0.95 : 1
                 }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                className="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] h-full md:h-[95vh] md:mt-[2.5vh] md:rounded-3xl overflow-hidden relative"
+                className="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-3xl shadow-[var(--glass-shadow)] h-full md:h-[95vh] md:mt-[2.5vh] md:rounded-3xl overflow-hidden relative"
             >
                 {/* Decorative Background Elements */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 via-blue-500 to-purple-500 opacity-80" />
 
                 {/* Header */}
-                <div className="p-5 border-b border-[var(--glass-border)] flex justify-between items-center bg-white/5 sticky top-0 z-10 backdrop-blur-md">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/20">
-                            <Sparkles className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold text-slate-100 tracking-tight">Unspoken</h1>
-                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Biometric CBT Bridge</p>
-                        </div>
-                    </div>
+                <div className="p-5 border-b border-[var(--glass-border)] flex justify-between items-center bg-[var(--glass-bg)] sticky top-0 z-10 backdrop-blur-md">
+                    <Logo size="md" />
 
                     <div className="flex items-center gap-4">
+                        <VoiceControls
+                            selectedVoice={selectedVoice}
+                            onVoiceChange={setSelectedVoice}
+                            isTTSEnabled={isTTSEnabled}
+                            onTTSToggle={() => setIsTTSEnabled(!isTTSEnabled)}
+                        />
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 rounded-full border border-slate-200/50 backdrop-blur-sm">
                             <div className={clsx("w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.2)]", stressScore > 0.7 ? "bg-red-500 animate-pulse shadow-red-500/50" : "bg-emerald-500 shadow-emerald-500/50")} />
-                            <span className="text-xs font-medium text-slate-600">Bio-Link Active</span>
+                            <span className="hidden sm:inline text-xs font-medium text-slate-600 dark:text-slate-400">Bio-Link Active</span>
                         </div>
+                        <ModeToggle />
                     </div>
                 </div>
 
@@ -295,8 +306,8 @@ export function ChatInterface() {
                                 <div className="absolute inset-0 rounded-full border border-slate-200 animate-[ping_3s_ease-in-out_infinite] opacity-50" />
                             </div>
                             <div className="max-w-md space-y-2">
-                                <h2 className="text-xl font-semibold text-slate-700">I'm listening.</h2>
-                                <p className="text-slate-500 text-sm leading-relaxed">
+                                <h2 className="text-xl font-semibold text-foreground">I'm listening.</h2>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
                                     This is a safe space. I analyze your tone and stress levels to provide the right support. How are you feeling right now?
                                 </p>
                             </div>
@@ -322,7 +333,7 @@ export function ChatInterface() {
                                         "px-5 py-3.5 shadow-sm text-[15px] leading-relaxed relative group backdrop-blur-md border",
                                         m.role === 'user'
                                             ? "bg-indigo-600/30 border-indigo-500/30 text-white rounded-2xl rounded-br-none shadow-lg shadow-indigo-500/10"
-                                            : "bg-white/10 border-white/20 text-slate-200 rounded-2xl rounded-bl-none shadow-lg"
+                                            : "bg-[var(--glass-bg)] border border-[var(--glass-border)] text-foreground rounded-2xl rounded-bl-none shadow-lg"
                                     )}
                                 >
                                     {m.content}
@@ -331,7 +342,7 @@ export function ChatInterface() {
                                 {m.role === 'assistant' && (
                                     <div className="flex items-center mt-1 ml-1 space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
-                                            onClick={() => speak(m.content)}
+                                            onClick={() => speak(m.content, getCurrentVoice(stressScore))}
                                             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-teal-600 transition-colors"
                                             title="Read Aloud"
                                         >
@@ -361,13 +372,13 @@ export function ChatInterface() {
                 {/* Input Area */}
                 <div className="p-6 bg-gradient-to-t from-black/20 via-black/10 to-transparent pt-10">
                     <form onSubmit={handleSend} className="relative flex items-center group">
-                        <div className="absolute inset-0 bg-white/10 border border-white/10 rounded-2xl md:rounded-3xl group-focus-within:border-indigo-500/50 group-focus-within:bg-white/15 group-focus-within:shadow-[0_4px_20px_rgba(99,102,241,0.1)] transition-all duration-300 backdrop-blur-md" />
+                        <div className="absolute inset-0 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-2xl md:rounded-3xl group-focus-within:border-indigo-500/50 group-focus-within:bg-[var(--glass-bg)] group-focus-within:shadow-[0_4px_20px_rgba(99,102,241,0.1)] transition-all duration-300 backdrop-blur-md" />
 
                         <input
                             value={localInput}
                             onChange={(e) => setLocalInput(e.target.value)}
                             placeholder="Type how you feel..."
-                            className="w-full bg-transparent border-none px-6 py-4 md:py-5 text-slate-200 placeholder:text-slate-400 focus:ring-0 relative z-10"
+                            className="w-full bg-transparent border-none px-6 py-4 md:py-5 text-foreground placeholder:text-muted-foreground focus:ring-0 relative z-10"
                             disabled={isLoading}
                         />
 
@@ -407,6 +418,12 @@ export function ChatInterface() {
                             <span>AI-Enhanced Support</span>
                         </p>
                     </div>
+                </div>
+
+                {/* Social Footer */}
+                <div className="absolute bottom-2 left-0 w-full flex justify-center gap-4 text-slate-500 opacity-50 hover:opacity-100 transition-opacity">
+                    <a href="#" className="hover:text-teal-400 transition-colors"><Twitter className="w-4 h-4" /></a>
+                    <a href="#" className="hover:text-slate-200 transition-colors"><Github className="w-4 h-4" /></a>
                 </div>
             </motion.div>
         </div>

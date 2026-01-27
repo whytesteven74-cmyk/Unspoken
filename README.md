@@ -1,64 +1,83 @@
 # Unspoken
 
-Unspoken is a serverless mental health bridge application designed to triage users based on text, voice, and facial biomarkers. It provides immediate CBT support for non-emergencies and hard-routes crises to human professionals.
+**Unspoken** is a serverless mental health bridge application designed to triage users based on text, voice, and facial biomarkers. It offers immediate, non-judgmental CBT support for non-emergencies while rigorously detecting crisis intent to hard-route users to human professionals.
 
-## Features
+## 🚀 Features
 
-- **Multimodal Analysis:** Integrates text, voice (pitch/jitter), and facial expression analysis for a "Digital Psychological Signature".
-- **Safety First:** "Hard Guardrail" protocol ensures crisis intent is detected deterministically *before* LLM inference.
-- **Privacy Focused:** Client-side biometric processing; only derived scores are sent to the server.
-- **Explainable AI:** Uses the TIFU framework to provide transparent rationales for triage decisions.
+-   **Multimodal Analysis**:
+    -   **Text**: Intent detection via Hermes 3 (Llama 3.1 8B).
+    -   **Voice**: Real-time jitter and pitch analysis for stress detection.
+    -   **Facial**: (Roadmap) Video-based micro-expression analysis.
+-   **Adaptive "Therapeutic" Voice**:
+    -   Dynamically switches TTS voices (Onyx, Echo, Alloy) based on user stress levels.
+-   **Safety First (Hard Guardrails)**:
+    -   Deterministic regex and keyword logic detects "I want to kill myself" or self-harm intent *before* AI processing.
+    -   Immediate redirection to crisis resources.
+-   **Premium UI**:
+    -   Glassmorphism design system (Tailwind + Framer Motion).
+    -   Privacy-focused "Private & Encrypted" indicators.
 
-## Tech Stack
+## 🛠 Tech Stack
 
-- **Framework:** Next.js 14+ (App Router)
-- **Database:** Supabase (PostgreSQL + pgvector)
-- **AI Orchestration:** Vercel AI SDK
-- **LLM:** Hermes 3 Llama 3.1 8B (via Custom Endpoint)
-- **TTS:** UncloseAI Kokoro (via Custom Endpoint)
-- **Styling:** Tailwind CSS
+-   **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+-   **Database**: [Neon Postgres](https://neon.tech/) (Prisma ORM)
+-   **AI**:
+    -   **LLM**: Hermes 3 Llama 3.1 8B (Custom Endpoint)
+    -   **TTS**: Kokoro (Custom Endpoint)
+-   **Styling**: Tailwind CSS + `framer-motion`
+-   **Testing**: Vitest + React Testing Library
 
-## Getting Started
+## 🏁 Getting Started
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/whytesteven74-cmyk/Unspoken.git
-    cd Unspoken
-    ```
+### 1. Clone & Install
+```bash
+git clone https://github.com/whytesteven74-cmyk/Unspoken.git
+cd Unspoken
+npm install
+```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+### 2. Environment Setup
+Create a `.env.local` file:
+```env
+# Database (Neon)
+DATABASE_URL="postgresql://user:password@ep-xyz.us-east-2.aws.neon.tech/unspoken-db?sslmode=require"
 
-3.  **Set up Environment Variables:**
-    Create a `.env.local` file in the root directory with the following keys:
-    ```bash
-    # AI Services
-    LLM_BASE_URL="https://hermes.ai.unturf.com/v1"
-    LLM_MODEL="adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic"
-    LLM_API_KEY="your-llm-api-key"
+# AI Services
+LLM_BASE_URL="https://hermes.ai.unturf.com/v1"
+LLM_MODEL="adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic"
+LLM_API_KEY="your-llm-key"
 
-    TTS_BASE_URL="https://speech.ai.unturf.com/v1"
-    TTS_MODEL="tts-1-kokoro"
-    TTS_API_KEY="your-tts-api-key"
+TTS_BASE_URL="https://speech.ai.unturf.com/v1"
+TTS_MODEL="tts-1-kokoro"
+TTS_API_KEY="your-tts-key"
 
-    # Supabase (Coming Soon)
-    NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
-    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
-    ```
+# Security
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-4.  **Run the development server:**
-    ```bash
-    npm run dev
-    ```
+### 3. Database Migration
+Initialize the Neon Postgres schema:
+```bash
+npx prisma migrate dev --name init
+```
 
-    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Run Development Server
+```bash
+npm run dev
+# Open http://localhost:3000
+```
 
-## Documentation
+## 🧪 Testing
 
-See [Gemini.md](./Gemini.md) for detailed architectural and ethical guidelines.
+Run the full test suite (Unit + Integration):
+```bash
+npm test
+```
 
-## Deploy on Vercel
+## 🔒 Security
 
-The project is configured for deployment on Vercel. Push to the `main` branch to trigger a deployment.
+-   **CSP**: Strict Content-Security-Policy enabled via `middleware.ts`.
+-   **Encryption**: All sensitive environmental variables are server-side only.
+
+## 📄 License
+MIT
