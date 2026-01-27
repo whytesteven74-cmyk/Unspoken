@@ -136,7 +136,7 @@ export function ChatInterface() {
 
 
     return (
-        <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800 font-sans overflow-hidden relative">
+        <div className="flex h-screen bg-transparent text-slate-100 font-sans overflow-hidden relative">
             <CrisisOverlay
                 isOpen={isCrisis}
                 onClose={() => setIsCrisis(false)}
@@ -254,20 +254,20 @@ export function ChatInterface() {
                     scale: showDebug ? 0.95 : 1
                 }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                className="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-white/80 backdrop-blur-xl shadow-2xl h-full md:h-[95vh] md:mt-[2.5vh] md:rounded-3xl border border-white/50 overflow-hidden relative"
+                className="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] h-full md:h-[95vh] md:mt-[2.5vh] md:rounded-3xl overflow-hidden relative"
             >
                 {/* Decorative Background Elements */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 via-blue-500 to-purple-500 opacity-80" />
 
                 {/* Header */}
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/60 sticky top-0 z-10 backdrop-blur-md">
+                <div className="p-5 border-b border-[var(--glass-border)] flex justify-between items-center bg-white/5 sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-teal-500 to-blue-600 rounded-xl shadow-lg shadow-teal-500/20">
+                        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/20">
                             <Sparkles className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Unspoken</h1>
-                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Biometric CBT Bridge</p>
+                            <h1 className="text-lg font-bold text-slate-100 tracking-tight">Unspoken</h1>
+                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Biometric CBT Bridge</p>
                         </div>
                     </div>
 
@@ -319,10 +319,10 @@ export function ChatInterface() {
                             >
                                 <div
                                     className={clsx(
-                                        "px-5 py-3.5 shadow-sm text-[15px] leading-relaxed relative group",
+                                        "px-5 py-3.5 shadow-sm text-[15px] leading-relaxed relative group backdrop-blur-md border",
                                         m.role === 'user'
-                                            ? "bg-slate-800 text-white rounded-2xl rounded-br-none shadow-slate-300/50"
-                                            : "bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-bl-none shadow-slate-200/50"
+                                            ? "bg-indigo-600/30 border-indigo-500/30 text-white rounded-2xl rounded-br-none shadow-lg shadow-indigo-500/10"
+                                            : "bg-white/10 border-white/20 text-slate-200 rounded-2xl rounded-bl-none shadow-lg"
                                     )}
                                 >
                                     {m.content}
@@ -359,15 +359,15 @@ export function ChatInterface() {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-6 bg-gradient-to-t from-white via-white to-white/0 pt-10">
+                <div className="p-6 bg-gradient-to-t from-black/20 via-black/10 to-transparent pt-10">
                     <form onSubmit={handleSend} className="relative flex items-center group">
-                        <div className="absolute inset-0 bg-slate-100 rounded-2xl md:rounded-3xl border border-transparent group-focus-within:border-teal-500/30 group-focus-within:bg-white group-focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all duration-300" />
+                        <div className="absolute inset-0 bg-white/10 border border-white/10 rounded-2xl md:rounded-3xl group-focus-within:border-indigo-500/50 group-focus-within:bg-white/15 group-focus-within:shadow-[0_4px_20px_rgba(99,102,241,0.1)] transition-all duration-300 backdrop-blur-md" />
 
                         <input
                             value={localInput}
                             onChange={(e) => setLocalInput(e.target.value)}
                             placeholder="Type how you feel..."
-                            className="w-full bg-transparent border-none px-6 py-4 md:py-5 text-slate-700 placeholder:text-slate-400 focus:ring-0 relative z-10"
+                            className="w-full bg-transparent border-none px-6 py-4 md:py-5 text-slate-200 placeholder:text-slate-400 focus:ring-0 relative z-10"
                             disabled={isLoading}
                         />
 

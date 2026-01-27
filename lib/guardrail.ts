@@ -15,6 +15,7 @@ const CRISIS_PATTERNS = [
     /kill myself/i,
     /suicide/i,
     /end it all/i,
+    /end my life/i,
     /want to die/i,
     /hurt myself/i,
     /take my life/i,
@@ -29,7 +30,7 @@ export function guardrailCheck(input: string): GuardrailResult {
     const normalizedInput = input.toLowerCase();
 
     for (const pattern of CRISIS_PATTERNS) {
-        if (pattern.test(normalizedInput)) {
+        if (pattern.test(input)) { // Regex is already case insensitive
             return {
                 isSafe: false,
                 riskLevel: 'crisis',
@@ -39,7 +40,7 @@ export function guardrailCheck(input: string): GuardrailResult {
                         { name: "Suicide & Crisis Lifeline", contact: "988" },
                         { name: "Crisis Text Line", contact: "Text HOME to 741741" }
                     ],
-                    trigger: "detected_crisis_keywords"
+                    trigger: "suicide_risk"
                 }
             };
         }
