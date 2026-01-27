@@ -84,6 +84,7 @@ export function useTTS(): UseTTSReturn {
 
     const queue = useCallback((text: string, voiceId?: string) => {
         if (!text.trim()) return;
+        console.log(`[TTS] Queuing: "${text.substring(0, 20)}..." [${voiceId || 'default'}]`);
         audioQueue.current.push({ text, voice: voiceId });
         processQueue();
     }, [processQueue]);

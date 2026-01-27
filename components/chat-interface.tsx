@@ -119,6 +119,7 @@ export function ChatInterface() {
             if (!reader) throw new Error('No reader available');
 
             let assistantContent = '';
+            let ttsBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -127,9 +128,24 @@ export function ChatInterface() {
                 const chunk = decoder.decode(value, { stream: true });
                 assistantContent += chunk;
 
-                // Queue chunk for TTS immediately
+                // Handle TTS Buffering
                 if (!isCrisis && isTTSEnabled) {
-                    queue(chunk, getCurrentVoice(stressScore));
+                    ttsBuffer += chunk;
+
+                    // Check for sentence delimiters
+                    // We look for . ! ? followed by space or end of string, or newlines
+                    const delimiterMatch = ttsBuffer.match(/[.!?]+(?=\s|$)|[\n]+/);
+
+                    if (delimiterMatch) {
+                        const lastIndex = delimiterMatch.index! + delimiterMatch[0].length;
+                        const sentence = ttsBuffer.substring(0, lastIndex);
+                        const remainder = ttsBuffer.substring(lastIndex);
+
+                        if (sentence.trim()) {
+                            queue(sentence.trim(), getCurrentVoice(stressScore));
+                        }
+                        ttsBuffer = remainder;
+                    }
                 }
 
                 setMessages(prev => prev.map(m =>
@@ -137,8 +153,10 @@ export function ChatInterface() {
                 ));
             }
 
-            // (Removed post-loop TTS call)
-        } catch (err: any) {
+            // Queue any remaining text in buffer after stream ends
+            if (!isCrisis && isTTSEnabled && ttsBuffer.trim()) {
+                queue(ttsBuffer.trim(), getCurrentVoice(stressScore));
+            }
             console.error("Chat Error:", err);
             alert(`Chat Error: ${err.message}`);
         } finally {
