@@ -157,6 +157,7 @@ export function ChatInterface() {
             if (!isCrisis && isTTSEnabled && ttsBuffer.trim()) {
                 queue(ttsBuffer.trim(), getCurrentVoice(stressScore));
             }
+        } catch (err: any) {
             console.error("Chat Error:", err);
             alert(`Chat Error: ${err.message}`);
         } finally {
