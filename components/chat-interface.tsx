@@ -9,6 +9,8 @@ import { useAnalytics } from '@/lib/analytics';
 import { CrisisOverlay } from './crisis-overlay';
 import { useSTT } from '@/lib/hooks/use-stt';
 import { useTTS, getOptimalVoice } from '@/lib/hooks/use-tts';
+import { useFaceTracker } from '@/lib/hooks/use-face-tracker';
+import { useAudioAnalysis } from '@/lib/hooks/use-audio-analysis';
 import { BiometricData } from '@/lib/types';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,8 +18,42 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function ChatInterface() {
     const { track } = useAnalytics();
 
-    // Biometric State (Simulation)
-    const [stressScore, setStressScore] = useState(0.5);
+    // Biometric Hooks (Real-time)
+    const { videoRef, startCamera, stopCamera, faceData, isReady: isFaceReady } = useFaceTracker();
+    const { startAudio, stopAudio, audioData } = useAudioAnalysis();
+
+    // Derived Stress Score (Simple Weighted Average)
+    const stressScore = Math.max(0, Math.min(1,
+        ((1 - faceData.valence) * 0.6) + (audioData.audioStress * 0.4)
+    ));
+
+    const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+
+    // Auto-start sensors (respecting privacy)
+    useEffect(() => {
+        let mounted = true;
+        const manageSensors = async () => {
+            if (isPrivacyMode) {
+                stopCamera();
+                stopAudio();
+            } else {
+                await startAudio();
+                if (isFaceReady) await startCamera();
+            }
+        };
+
+        if (isFaceReady) manageSensors();
+
+        return () => {
+            mounted = false;
+            if (!isPrivacyMode) { // Only stop on unmount if we were running
+                stopCamera();
+                stopAudio();
+            }
+        };
+    }, [isFaceReady, startCamera, startAudio, stopCamera, stopAudio, isPrivacyMode]);
+
+    // const [stressScore, setStressScore] = useState(0.5); // Replaced
     const [isCrisis, setIsCrisis] = useState(false);
     const [crisisResources, setCrisisResources] = useState<any[]>([]);
 
@@ -35,9 +71,9 @@ export function ChatInterface() {
     const [localInput, setLocalInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Biometric State (Detail)
-    const [pitch, setPitch] = useState(220);
-    const [jitter, setJitter] = useState(5);
+    // Biometric State (Detail) - Hook derived instead
+    // const [pitch, setPitch] = useState(220);
+    // const [jitter, setJitter] = useState(5);
     const [showDebug, setShowDebug] = useState(false);
 
     // TTS Hook
@@ -98,11 +134,15 @@ export function ChatInterface() {
                 body: JSON.stringify({
                     messages: [...messages, userMsg],
                     biometricData: {
-                        pitch_hz: pitch,
-                        jitter_percent: stressScore * 20,
-                        face_valence: 1 - stressScore * 2,
+                        pitch_hz: audioData.pitchHz,
+                        jitter_percent: audioData.jitter * 100,
+                        face_valence: faceData.valence,
                         derived_stress_score: stressScore,
-                        metadata: { sensor_confidence: 1.0 }
+                        metadata: {
+                            sensor_confidence: faceData.isActive && audioData.isActive ? 1.0 : 0.5,
+                            is_face_active: faceData.isActive,
+                            is_audio_active: audioData.isActive
+                        }
                     }
                 })
             });
@@ -168,6 +208,38 @@ export function ChatInterface() {
 
     return (
         <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden relative">
+            {/* Hidden Video Feed for MediaPipe */}
+            <div className="absolute opacity-0 pointer-events-none w-1 h-1 overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline muted className="w-1 h-1" />
+            </div>
+
+            {/* Sensor Status Indicators */}
+            <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 pointer-events-auto">
+                <div className="flex flex-col gap-1 text-[10px] text-white/50 font-mono pointer-events-none">
+                    <div className="flex items-center gap-1">
+                        <div className={`w-1.5 h-1.5 rounded-full ${faceData.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span>CAM: {faceData.isActive ? 'ACTIVE' : 'OFF'} (Val: {faceData.valence.toFixed(2)})</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className={`w-1.5 h-1.5 rounded-full ${audioData.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span>MIC: {audioData.isActive ? 'ACTIVE' : 'OFF'} (Str: {audioData.audioStress.toFixed(2)})</span>
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => setIsPrivacyMode(!isPrivacyMode)}
+                    className={clsx(
+                        "flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] backdrop-blur-md transition-all border",
+                        isPrivacyMode
+                            ? "bg-slate-900/80 border-slate-700 text-slate-300 hover:bg-slate-800"
+                            : "bg-teal-900/20 border-teal-500/30 text-teal-300 hover:bg-teal-900/30"
+                    )}
+                >
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>{isPrivacyMode ? "Privacy Mode: ON" : "Sensors Active"}</span>
+                </button>
+            </div>
+
             <CrisisOverlay
                 isOpen={isCrisis}
                 onClose={() => setIsCrisis(false)}

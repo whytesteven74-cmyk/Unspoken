@@ -15,6 +15,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.7",
     "@ai-sdk/react": "^3.0.20",
+    "@mediapipe/tasks-vision": "^0.10.32",
     "@prisma/client": "^5.10.0",
     "ai": "^6.0.0",
     "clsx": "^2.1.1",
