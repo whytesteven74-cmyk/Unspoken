@@ -271,48 +271,39 @@ export function ChatInterface() {
                                     <span>Stress Level</span>
                                     <span className={stressScore > 0.7 ? "text-red-500" : "text-emerald-500"}>{stressScore.toFixed(2)}</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.05"
-                                    value={stressScore}
-                                    onChange={(e) => setStressScore(parseFloat(e.target.value))}
-                                    className="w-full accent-teal-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                />
-                                <p className="text-[10px] text-slate-400">Higher scores trigger empathy & grounding protocols.</p>
+                                <div className="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                    <div
+                                        className={clsx("h-full transition-all duration-300", stressScore > 0.7 ? "bg-red-500" : "bg-emerald-500")}
+                                        style={{ width: `${stressScore * 100}%` }}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-slate-400">Derived from Facial Valence and Vocal Analysis.</p>
                             </div>
 
                             <div className="space-y-2">
                                 <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
                                     <span>Voice Pitch (Hz)</span>
-                                    <span>{pitch} Hz</span>
+                                    <span>{audioData.pitchHz.toFixed(0)} Hz</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="80"
-                                    max="300"
-                                    step="10"
-                                    value={pitch}
-                                    onChange={(e) => setPitch(parseInt(e.target.value))}
-                                    className="w-full accent-indigo-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                />
+                                <div className="w-full h-1 bg-slate-200 rounded-lg overflow-hidden">
+                                    <div
+                                        className="h-full bg-indigo-500 transition-all duration-300"
+                                        style={{ width: `${Math.min(audioData.pitchHz / 4, 100)}%` }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
                                 <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                    <span>Voice Jitter (%)</span>
-                                    <span>{jitter.toFixed(1)}%</span>
+                                    <span>Voice Jitter</span>
+                                    <span>{audioData.jitter.toFixed(2)}</span>
                                 </div>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="50"
-                                    step="0.5"
-                                    value={jitter}
-                                    onChange={(e) => setJitter(parseFloat(e.target.value))}
-                                    className="w-full accent-purple-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                />
+                                <div className="w-full h-1 bg-slate-200 rounded-lg overflow-hidden">
+                                    <div
+                                        className="h-full bg-purple-500 transition-all duration-300"
+                                        style={{ width: `${Math.min(audioData.jitter * 10, 100)}%` }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="pt-4 border-t border-slate-200">

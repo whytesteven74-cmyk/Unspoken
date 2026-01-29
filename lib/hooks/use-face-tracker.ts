@@ -12,7 +12,7 @@ export function useFaceTracker() {
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const landmarkerRef = useRef<FaceLandmarker | null>(null);
-    const requestRef = useRef<number>();
+    const requestRef = useRef<number | null>(null);
 
     // Initialize MediaPipe
     useEffect(() => {

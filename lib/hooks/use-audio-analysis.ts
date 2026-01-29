@@ -18,7 +18,7 @@ export function useAudioAnalysis() {
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
-    const rafRef = useRef<number>();
+    const rafRef = useRef<number | null>(null);
 
     // Pitch detection buffers
     const bufferLength = 2048;
