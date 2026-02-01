@@ -2,14 +2,13 @@ import { guardrailCheck } from '@/lib/guardrail';
 import { BiometricData } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { isRateLimited } from '@/lib/rate-limit';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
 // Configurable via environment variables
 const BASE_URL_RAW = process.env.LLM_BASE_URL || 'https://hermes.ai.unturf.com/v1';
-// Sanitize BASE_URL (remove trailing slash)
 const LLM_BASE_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
-
 const LLM_MODEL = process.env.LLM_MODEL || 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic';
 const LLM_API_KEY = process.env.LLM_API_KEY || 'sk-placeholder';
 
@@ -29,53 +28,64 @@ export async function POST(req: Request) {
         return Response.json({ error: "Too Many Requests" }, { status: 429 });
     }
 
-    let responseTextAccumulator = "";
-    let savedUserId = "";
+    // 0. CHECK AUTHENTICATION (Allow bypass for test personas)
+    const testPersonaId = req.headers.get('x-test-persona');
+    let savedProfileId: string | null = null;
+    let authUser: any = null;
+
+    if (testPersonaId && process.env.NODE_ENV === 'development') {
+        savedProfileId = testPersonaId;
+        authUser = { id: testPersonaId, email: `${testPersonaId.toLowerCase()}@test.bot` };
+    } else {
+        const supabase = createClient();
+        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !supabaseUser) {
+            return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        authUser = supabaseUser;
+        savedProfileId = authUser.id;
+    }
 
     try {
         const body = await req.json();
         const { messages, biometricData } = body;
 
-        // --- DATABASE INTEGRATION START ---
-        let user = null;
+        // Create or update profile using Raw SQL
         try {
-            user = await prisma.profile.findFirst({ where: { is_anonymous: true } });
-            if (!user) {
-                user = await prisma.profile.create({ data: { is_anonymous: true, consented_to_biometrics: true } });
-            }
-            savedUserId = user.id;
+            await prisma.$executeRaw`
+                INSERT INTO "Profile" (id, is_anonymous) 
+                VALUES (${authUser.id}, false) 
+                ON CONFLICT (id) DO NOTHING
+            `;
         } catch (dbError) {
-            console.warn("[API] DB Connection Warning (Profile):", dbError);
+            console.warn("[API] Raw SQL Profile Warning:", dbError);
         }
 
         const bioData = biometricData as BiometricData;
         const stressLevel = bioData?.derived_stress_score || 0;
 
-        if (savedUserId) {
-            try {
-                await prisma.triageEvent.create({
-                    data: {
-                        user_id: savedUserId,
-                        voice_jitter: bioData?.jitter_percent || 0,
-                        face_valence: bioData?.face_valence || 0,
-                        risk_level: stressLevel > 0.8 ? 'crisis' : stressLevel > 0.5 ? 'moderate' : 'low',
-                        created_at: new Date()
-                    }
-                });
-            } catch (e) { }
+        // Log biometric event using Raw SQL
+        try {
+            await prisma.$executeRaw`
+                INSERT INTO "TriageEvent" (id, user_id, voice_jitter, face_valence, risk_level)
+                VALUES (${crypto.randomUUID()}, ${savedProfileId}, ${bioData?.jitter_percent || 0}, ${bioData?.face_valence || 0}, ${stressLevel > 0.8 ? 'crisis' : stressLevel > 0.5 ? 'moderate' : 'low'})
+            `;
+        } catch (e) {
+            console.error("[API] Failed to log triage event (Raw SQL):", e);
         }
 
+        // Log User Message using Raw SQL
         const lastUserMessage = messages?.[messages.length - 1];
-        if (savedUserId && lastUserMessage?.role === 'user') {
+        if (lastUserMessage?.role === 'user') {
             try {
-                await prisma.message.create({
-                    data: {
-                        user_id: savedUserId,
-                        role: 'user',
-                        content: lastUserMessage.content
-                    }
-                });
-            } catch (e) { }
+                await prisma.$executeRaw`
+                    INSERT INTO "Message" (id, user_id, role, content)
+                    VALUES (${crypto.randomUUID()}, ${savedProfileId}, 'user', ${lastUserMessage.content})
+                `;
+            } catch (e) {
+                console.error("[API] Failed to save user message (Raw SQL):", e);
+            }
         }
         // --- DATABASE INTEGRATION END ---
 
@@ -123,6 +133,42 @@ export async function POST(req: Request) {
             { role: 'system', content: systemPrompt },
             ...messages.map((m: any) => ({ role: m.role, content: m.content }))
         ];
+
+        const MOCK_LLM = process.env.MOCK_LLM === 'true';
+
+        // 5. MOCK or REAL LLM
+        if (MOCK_LLM) {
+            console.log("[API] Using Mock LLM Mode");
+            const mockResponse = stressLevel > 0.7
+                ? "I can hear how much you're struggling right now. Let's take a slow breath together. I'm here to listen, and we'll take this one step at a time."
+                : "Thank you for sharing that with me. It sounds like you've been carrying a lot. Can you tell me more about what's on your mind?";
+
+            const encoder = new TextEncoder();
+            const stream = new ReadableStream({
+                async start(controller) {
+                    const words = mockResponse.split(' ');
+                    for (const word of words) {
+                        controller.enqueue(encoder.encode(word + ' '));
+                        await new Promise(r => setTimeout(r, 50)); // Simulating typing
+                    }
+
+                    // Save mock response to DB at the end (Raw SQL)
+                    if (savedProfileId) {
+                        try {
+                            await prisma.$executeRaw`
+                                INSERT INTO "Message" (id, user_id, role, content)
+                                VALUES (${crypto.randomUUID()}, ${savedProfileId}, 'assistant', ${mockResponse})
+                            `;
+                        } catch (err) { }
+                    }
+                    controller.close();
+                }
+            });
+
+            return new Response(stream, {
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+            });
+        }
 
         // 5. Direct Fetch Proxy
         const upstreamResponse = await fetch(`${LLM_BASE_URL}/chat/completions`, {
@@ -188,11 +234,12 @@ export async function POST(req: Request) {
                 }
             },
             async flush(controller) {
-                if (savedUserId && responseTextAccumulator.trim()) {
+                if (savedProfileId && responseTextAccumulator.trim()) {
                     try {
-                        await prisma.message.create({
-                            data: { user_id: savedUserId, role: 'assistant', content: responseTextAccumulator }
-                        });
+                        await prisma.$executeRaw`
+                            INSERT INTO "Message" (id, user_id, role, content)
+                            VALUES (${crypto.randomUUID()}, ${savedProfileId}, 'assistant', ${responseTextAccumulator})
+                        `;
                     } catch (err) { }
                 }
             }

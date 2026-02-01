@@ -9,6 +9,7 @@ async function main() {
         // 1. Create a test profile
         const profile = await prisma.profile.create({
             data: {
+                id: 'test-user-id-123',
                 is_anonymous: true,
                 baseline_stress_score: 0.5,
             },
