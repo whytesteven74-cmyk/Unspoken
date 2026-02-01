@@ -44,7 +44,6 @@ export function ChatInterface() {
     const [messages, setMessages] = useState<any[]>([]);
     const [localInput, setLocalInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const [showDebug, setShowDebug] = useState(false);
 
     // Growth / Viral Loop State

@@ -203,6 +203,7 @@ export async function POST(req: Request) {
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
         let buffer = '';
+        let responseTextAccumulator = ''; // Accumulated response for DB
 
         const transformStream = new TransformStream({
             async transform(chunk, controller) {

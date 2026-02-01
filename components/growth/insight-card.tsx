@@ -43,7 +43,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
         <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "outback" }}
+            transition={{ duration: 0.5, ease: "backOut" }}
             className="w-full max-w-sm mx-auto"
         >
             <div
