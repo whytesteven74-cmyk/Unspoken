@@ -22,8 +22,6 @@ export function useVAD() {
         onVADMisfire: () => {
             console.log("VAD misfire");
         },
-        workletURL: "/vad/vad.worklet.bundle.min.js",
-        modelURL: "/vad/silero_vad.onnx",
         positiveSpeechThreshold: 0.6,
         negativeSpeechThreshold: 0.4,
         minSpeechFrames: 4,
