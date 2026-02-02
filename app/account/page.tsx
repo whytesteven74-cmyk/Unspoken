@@ -1,26 +1,73 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from '@/components/ui/logo';
 import { ShieldCheck, Brain, Activity, Trash2, LogOut, ArrowLeft, Lock } from 'lucide-react';
 import Link from 'next/link';
-
-// Mock Data for "The Vault" (Memory Store)
-const MOCK_MEMORY = [
-    { id: '1', category: 'CORE_BELIEF', content: 'Feels worth is tied to productivity.', date: '2024-02-01' },
-    { id: '2', category: 'FAMILY', content: 'Has not told wife about work stress.', date: '2024-01-28' },
-    { id: '3', category: 'WORK', content: 'Boss yells frequently; causes somatic chest tightness.', date: '2024-01-25' },
-    { id: '4', category: 'STRUGGLE', content: 'Uses "intellectualizing" as a defense mechanism.', date: '2024-01-20' },
-];
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function AccountPage() {
-    const [facts, setFacts] = useState(MOCK_MEMORY);
+    const [facts, setFacts] = useState<any[]>([]);
+    const [profile, setProfile] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const supabase = createClient();
 
-    const handleDelete = (id: string) => {
-        // In real app: call API to delete fact
-        setFacts(facts.filter(f => f.id !== id));
+    useEffect(() => {
+        const loadData = async () => {
+            // 1. Get User
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+
+            // 2. Fetch Profile
+            const { data: profileData } = await supabase
+                .from('Profile')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            setProfile(profileData);
+
+            // 3. Fetch Facts
+            const { data: factsData } = await supabase
+                .from('UserFact')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (factsData) setFacts(factsData);
+            setLoading(false);
+        };
+
+        loadData();
+    }, [router, supabase]);
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
     };
+
+    const handleDelete = async (id: string) => {
+        // Optimistic update
+        setFacts(facts.filter(f => f.id !== id));
+
+        await supabase
+            .from('UserFact')
+            .delete()
+            .eq('id', id);
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-white/50 font-mono animate-pulse">
+                ACCESSING VAULT...
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-teal-500/30">
@@ -40,20 +87,25 @@ export default function AccountPage() {
                 <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-900 to-emerald-900 border border-teal-500/30 flex items-center justify-center text-xl font-serif">
-                            JS
+                            {profile?.is_anonymous ? 'A' : 'JD'}
                         </div>
                         <div>
-                            <h1 className="text-2xl font-serif text-white">John Smith</h1>
+                            <h1 className="text-2xl font-serif text-white">
+                                {profile?.is_anonymous ? 'Anonymous User' : 'Authenticated User'}
+                            </h1>
                             <div className="flex items-center gap-2 text-xs text-white/50">
                                 <ShieldCheck size={12} className="text-emerald-500" />
-                                <span>Biometrics Calibrated</span>
+                                <span>Biometrics: {profile?.consented_to_biometrics ? 'Active' : 'Pending'}</span>
                                 <span>•</span>
-                                <span>Member since Jan 2026</span>
+                                <span className="font-mono text-[10px] opacity-50">{profile?.id.slice(0, 8)}...</span>
                             </div>
                         </div>
                     </div>
 
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-full border border-red-900/50 bg-red-950/10 text-red-400 text-sm hover:bg-red-950/30 transition-colors">
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full border border-red-900/50 bg-red-950/10 text-red-400 text-sm hover:bg-red-950/30 transition-colors"
+                    >
                         <LogOut size={14} />
                         Sign Out
                     </button>
@@ -66,8 +118,10 @@ export default function AccountPage() {
                             <Activity size={20} />
                             <span className="text-xs font-bold uppercase tracking-widest">Resonance</span>
                         </div>
-                        <div className="text-3xl font-mono text-white">0.62</div>
-                        <p className="text-xs text-white/40 mt-2">Avg. Positive Valence (Last 7 Days)</p>
+                        <div className="text-3xl font-mono text-white">
+                            {profile?.baseline_stress_score ? Math.round((1 - profile.baseline_stress_score) * 100) / 100 : '--'}
+                        </div>
+                        <p className="text-xs text-white/40 mt-2">Baseline Connectivity</p>
                     </div>
 
                     <div className="p-6 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
@@ -119,7 +173,7 @@ export default function AccountPage() {
                                             {fact.category}
                                         </span>
                                         <span className="text-[10px] text-white/20 font-mono">
-                                            {fact.date}
+                                            {new Date(fact.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
                                     <p className="text-white/80 font-medium leading-relaxed">

@@ -9,39 +9,40 @@ datasource db {
 }
 
 model Profile {
-  id                    String   @id // This will match Supabase Auth UID
+  id                      String   @id // This will match Supabase Auth UID
   // email                 String?  @unique
-  is_anonymous          Boolean  @default(false)
-  consented_to_biometrics Boolean @default(false)
-  baseline_stress_score Float?
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
-  
-  triage_events         TriageEvent[]
-  entries               Entry[]
-  messages              Message[]
+  is_anonymous            Boolean  @default(false)
+  consented_to_biometrics Boolean  @default(false)
+  baseline_stress_score   Float?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  triage_events TriageEvent[]
+  entries       Entry[]
+  messages      Message[]
+  UserFact      UserFact[]
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  user_id   String
-  user      Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role      String
-  content   String
+  id         String   @id @default(uuid())
+  user_id    String
+  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role       String
+  content    String
   created_at DateTime @default(now())
 }
 
 model TriageEvent {
-  id                 String   @id @default(uuid())
-  user_id            String
-  user               Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  created_at         DateTime @default(now())
-  text_sentiment     Float?
-  voice_jitter       Float?
-  face_valence       Float?
-  risk_level         String?  // 'low', 'moderate', 'crisis'
-  ai_rationale       String?
-  triggered_guardrail Boolean @default(false)
+  id                  String   @id @default(uuid())
+  user_id             String
+  user                Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at          DateTime @default(now())
+  text_sentiment      Float?
+  voice_jitter        Float?
+  face_valence        Float?
+  risk_level          String? // 'low', 'moderate', 'crisis'
+  ai_rationale        String?
+  triggered_guardrail Boolean  @default(false)
 }
 
 model Entry {
@@ -53,11 +54,11 @@ model Entry {
 }
 
 model UserFact {
-  id          String   @id @default(uuid())
-  user_id     String
-  user        Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  category    String   // e.g., "FAMILY", "WORK", "STRUGGLE"
-  content     String
-  confidence  Float    @default(1.0)
-  created_at  DateTime @default(now())
+  id         String   @id @default(uuid())
+  user_id    String
+  user       Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category   String // e.g., "FAMILY", "WORK", "STRUGGLE"
+  content    String
+  confidence Float    @default(1.0)
+  created_at DateTime @default(now())
 }

@@ -3,6 +3,7 @@ import { BiometricData } from '@/lib/types';
 import { prisma } from '@/lib/prisma';
 import { isRateLimited } from '@/lib/rate-limit';
 import { createClient } from '@/lib/supabase/server';
+import { extractAndStoreFacts } from '@/lib/services/fact-extraction';
 
 export const runtime = 'nodejs';
 
@@ -94,6 +95,13 @@ export async function POST(req: Request) {
             const safetyResult = guardrailCheck(lastUserMessage.content);
             if (!safetyResult.isSafe) {
                 return Response.json(safetyResult.crisisResponse, { status: 400 });
+            }
+
+            // FIRE AND FORGET: Fact Extraction
+            // We do not await this to keep latency low.
+            if (savedProfileId && !process.env.MOCK_LLM) {
+                extractAndStoreFacts(savedProfileId, lastUserMessage.content)
+                    .catch(e => console.error("[Background] Fact Extraction Failed:", e));
             }
         }
 

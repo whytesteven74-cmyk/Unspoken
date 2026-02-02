@@ -3,9 +3,21 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PermissionGate } from './permission-gate';
 
 export function VoiceStep({ onComplete }: { onComplete: (val: number) => void }) {
+    const [hasPermission, setHasPermission] = useState(false);
     const [recording, setRecording] = useState(false);
+
+    const requestMic = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            setHasPermission(true);
+        } catch (err) {
+            console.error("Mic Access Denied:", err);
+            alert("We need microphone access to verify your voice. Please enable it.");
+        }
+    };
 
     const toggleRecord = () => {
         if (!recording) {
@@ -17,6 +29,17 @@ export function VoiceStep({ onComplete }: { onComplete: (val: number) => void })
             }, 3000);
         }
     };
+
+    if (!hasPermission) {
+        return (
+            <PermissionGate
+                type="microphone"
+                title="Voice Calibration"
+                description="We analyze vocal biomarkers (tone, pace, jitter) to detect stress. We process audio in real-time."
+                onGrant={requestMic}
+            />
+        );
+    }
 
     return (
         <div className="text-center space-y-8 py-4">

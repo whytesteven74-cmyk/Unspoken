@@ -2,42 +2,48 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-// Mocking the hook interface if it's strictly bound to a context, 
-// but assuming we can simulate the "Face Scan" UI here for the wizard.
-// In a real integration, we'd pull shared state or use the hook directly.
+import { PermissionGate } from './permission-gate';
 
 export function VisualStep({ onComplete }: { onComplete: (val: number) => void }) {
+    const [hasPermission, setHasPermission] = useState(false);
     const [progress, setProgress] = useState(0);
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    useEffect(() => {
-        // Start camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                if (videoRef.current) videoRef.current.srcObject = stream;
-            })
-            .catch(err => console.error("Internal Camera Error (Simulated)", err));
+    const requestLegacyCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            if (videoRef.current) videoRef.current.srcObject = stream;
+            setHasPermission(true);
+            startScanning();
+        } catch (err) {
+            console.error("Camera Access Denied:", err);
+            alert("We need camera access to calibrate. Please enable it in browser settings.");
+        }
+    };
 
-        // Fake scan progress
+    const startScanning = () => {
         const interval = setInterval(() => {
             setProgress(p => {
                 if (p >= 100) {
                     clearInterval(interval);
-                    onComplete(0.45); // Mock "Resting Valence"
+                    onComplete(0.45); // Mock "Resting Valence" result
                     return 100;
                 }
                 return p + 2;
             });
         }, 60);
+    };
 
-        return () => {
-            clearInterval(interval);
-            // Cleanup tracks
-            if (videoRef.current && videoRef.current.srcObject) {
-                (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-            }
-        };
-    }, []);
+    if (!hasPermission) {
+        return (
+            <PermissionGate
+                type="camera"
+                title="Calibrate Visual Baseline"
+                description="We analyze micro-expressions to understand your emotional resting state. No video is ever recorded or stored."
+                onGrant={requestLegacyCamera}
+            />
+        );
+    }
 
     return (
         <div className="text-center space-y-6">
