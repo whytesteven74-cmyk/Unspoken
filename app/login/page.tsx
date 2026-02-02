@@ -8,6 +8,8 @@ import { clsx } from 'clsx'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [isLoading, setIsLoading] = useState(false)
