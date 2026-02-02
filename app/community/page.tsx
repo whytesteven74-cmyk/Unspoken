@@ -2,110 +2,72 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Logo } from '@/components/ui/logo'; // Assuming logo component exists
 import { InsightCard } from '@/components/growth/insight-card';
-import { Logo } from '@/components/ui/logo';
+import { ArrowLeft, Users } from 'lucide-react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 
-// Mock Data for Social Proof (Simulating active users)
-const MOCK_COMMUNITY_INSIGHTS = [
-    {
-        id: 1,
-        insight: "I realized my anger is just a bodyguard for my grief.",
-        valence: -0.4,
-        date: "2 mins ago"
-    },
-    {
-        id: 2,
-        insight: "The silence isn't empty; it's full of answers I was afraid to hear.",
-        valence: 0.1,
-        date: "5 mins ago"
-    },
-    {
-        id: 3,
-        insight: "Productivity is not a measure of my worthiness to exist.",
-        valence: 0.5,
-        date: "12 mins ago"
-    },
-    {
-        id: 4,
-        insight: "It's okay to put down the weight I've been carrying for everyone else.",
-        valence: 0.8,
-        date: "1 hour ago"
-    },
-    {
-        id: 5,
-        insight: "I am learning to be gentle with the parts of me that are still learning.",
-        valence: 0.3,
-        date: "2 hours ago"
-    }
+// Mock Data for Community Feed
+const COMMUNITY_INSIGHTS = [
+    { id: '1', insight: "I realized my anxiety is actually just excitement without breath.", valence: 0.8, date: '2 m ago', topic: 'Reframing' },
+    { id: '2', insight: "Silence isn't empty, it's full of answers I was avoiding.", valence: -0.2, date: '15 m ago', topic: 'Solitude' },
+    { id: '3', insight: "Productivity is not a measure of my worth.", valence: 0.95, date: '1 h ago', topic: 'Core Belief' },
+    { id: '4', insight: "I can say 'no' without saying 'sorry'.", valence: 0.6, date: '2 h ago', topic: 'Boundaries' },
 ];
 
 export default function CommunityPage() {
     return (
         <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-teal-500/30">
-            {/* Header */}
-            <header className="fixed top-0 inset-x-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-white/5">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/chat" className="text-white/50 hover:text-white transition-colors">
-                            <ArrowLeft size={20} />
-                        </Link>
-                        <div className="flex items-center gap-2">
-                            <Logo size="sm" />
-                            <span className="text-sm font-mono tracking-widest text-teal-500 uppercase">
-                                Community Pulse
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex gap-2 text-[10px] font-mono text-white/30 uppercase">
-                        <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                            142 Online
-                        </span>
-                        <span>•</span>
-                        <span>Global Feed</span>
-                    </div>
+            {/* Navigation */}
+            <nav className="fixed top-0 w-full z-50 bg-neutral-950/80 backdrop-blur-md border-b border-white/5">
+                <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/chat" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+                        <ArrowLeft size={18} />
+                        <span className="text-sm">Back to Session</span>
+                    </Link>
+                    <Logo size="sm" />
                 </div>
-            </header>
+            </nav>
 
-            {/* Main Grid */}
-            <main className="pt-24 pb-20 px-4 max-w-7xl mx-auto">
-                <div className="text-center mb-16 space-y-4">
-                    <motion.h1
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-3xl md:text-5xl font-serif text-white/90"
-                    >
-                        You are not alone.
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-white/50 max-w-lg mx-auto leading-relaxed"
-                    >
-                        Witness the anonymized breakthroughs of others on the same journey.
-                        Every card represents a moment of clarity verified by biometrics.
-                    </motion.p>
+            <main className="pt-28 pb-20 px-6 max-w-2xl mx-auto space-y-12">
+                {/* Header */}
+                <div className="text-center space-y-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-teal-400">
+                        <Users size={12} />
+                        <span>LIVE FEED</span>
+                    </div>
+                    <h1 className="text-3xl md:text-4xl font-serif text-white">
+                        You Are Not Alone.
+                    </h1>
+                    <p className="text-white/50 max-w-md mx-auto">
+                        Real breakthroughs from real people, anonymized by Unspoken.
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {MOCK_COMMUNITY_INSIGHTS.map((item, i) => (
+                {/* Feed */}
+                <div className="space-y-8">
+                    {COMMUNITY_INSIGHTS.map((item, index) => (
                         <motion.div
                             key={item.id}
                             initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: index * 0.1 }}
                         >
                             <InsightCard
                                 insight={item.insight}
                                 valence={item.valence}
                                 date={item.date}
-                                topic="Community Insight"
+                                topic={item.topic}
                             />
                         </motion.div>
                     ))}
+                </div>
+
+                <div className="text-center pt-12">
+                    <p className="text-xs text-white/30 uppercase tracking-widest">
+                        End of Feed
+                    </p>
                 </div>
             </main>
         </div>
