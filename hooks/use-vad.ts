@@ -24,9 +24,9 @@ export function useVAD() {
         },
         positiveSpeechThreshold: 0.6,
         negativeSpeechThreshold: 0.4,
-        minSpeechFrames: 4,
-        preSpeechPadFrames: 10,
-        redemptionFrames: 8
+        minSpeechMs: 128,
+        preSpeechPadMs: 320,
+        redemptionMs: 256
     });
 
     return {
